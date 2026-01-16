@@ -7,7 +7,6 @@ Git 提交消息生成器
 
 import subprocess
 import sys
-import re
 from typing import List, Tuple, Dict
 
 def run_command(cmd: str) -> Tuple[str, int]:
@@ -56,21 +55,21 @@ def analyze_changes(files: List[str]) -> Dict[str, any]:
         'refactors': [],
         'others': []
     }
-    
+
     for file in files:
         # 统计变更
         changes = get_file_changes(file)
         analysis['additions'] += changes['additions']
         analysis['deletions'] += changes['deletions']
-        
+
         # 分析文件类型
         ext = file.split('.')[-1] if '.' in file else 'no_ext'
         analysis['file_types'][ext] = analysis['file_types'].get(ext, 0) + 1
-        
+
         # 分析目录
         dir_name = '/'.join(file.split('/')[:-1]) if '/' in file else 'root'
         analysis['directories'][dir_name] = analysis['directories'].get(dir_name, 0) + 1
-        
+
         # 根据文件名和路径推断变更类型
         file_lower = file.lower()
         if any(keyword in file_lower for keyword in ['test', 'spec']):
@@ -83,7 +82,7 @@ def analyze_changes(files: List[str]) -> Dict[str, any]:
             analysis['refactors'].append(file)
         else:
             analysis['features'].append(('feat', file))
-    
+
     return analysis
 
 def determine_commit_type(analysis: Dict[str, any]) -> str:
@@ -95,7 +94,7 @@ def determine_commit_type(analysis: Dict[str, any]) -> str:
         'refactor': len(analysis['refactors']),
         'feat': sum(1 for t, f in analysis['features'] if t == 'feat')
     }
-    
+
     if counts['fix'] > 0:
         return 'fix'
     elif counts['test'] > 0 and counts['feat'] == 0:
@@ -113,12 +112,12 @@ def determine_scope(analysis: Dict[str, any]) -> str:
     if len(analysis['directories']) == 1:
         dir_name = list(analysis['directories'].keys())[0]
         return dir_name.split('/')[-1]
-    
+
     # 基于文件类型推断
     if len(analysis['file_types']) == 1:
         file_type = list(analysis['file_types'].keys())[0]
         return file_type
-    
+
     return 'global'
 
 def generate_summary(analysis: Dict[str, any], commit_type: str, scope: str) -> str:
@@ -132,9 +131,9 @@ def generate_summary(analysis: Dict[str, any], commit_type: str, scope: str) -> 
         'test': '测试',
         'chore': '维护'
     }
-    
+
     summary_type = type_names.get(commit_type, '更新')
-    
+
     if commit_type == 'feat':
         return f"{summary_type}: 添加{determine_features(analysis)}"
     elif commit_type == 'fix':
@@ -151,14 +150,14 @@ def determine_features(analysis: Dict[str, any]) -> str:
     files = [f for t, f in analysis['features'] if t == 'feat']
     if not files:
         return "功能"
-    
+
     # 从文件名中提取关键词
     keywords = []
     for file in files:
         name = file.split('/')[-1].split('.')[0]
         if len(name) > 2:
             keywords.append(name)
-    
+
     if keywords:
         return f" {keywords[0]} 相关功能"
     return "功能"
@@ -172,49 +171,49 @@ def determine_issues(analysis: Dict[str, any]) -> str:
 def generate_description(analysis: Dict[str, any]) -> str:
     """生成详细描述"""
     lines = []
-    
+
     # 统计信息
     if analysis['total_files'] > 1:
         lines.append(f"- 修改 {analysis['total_files']} 个文件")
-    
+
     # 变更统计
     if analysis['additions'] > 0 or analysis['deletions'] > 0:
         additions = f"+{analysis['additions']}"
         deletions = f"-{analysis['deletions']}"
         lines.append(f"- 变更: {additions} {deletions}")
-    
+
     # 文件列表
     if analysis['total_files'] <= 5:
         files = get_staged_files()
         for file in files:
             lines.append(f"- {file}")
-    
+
     return '\n'.join(lines) if lines else "- 代码更新"
 
 def generate_commit_message() -> str:
     """生成完整的提交消息"""
     # 获取已暂存的文件
     files = get_staged_files()
-    
+
     if not files:
         print("❌ 没有已暂存的文件")
         print("提示: 使用 'git add <file>' 暂存文件")
         sys.exit(1)
-    
+
     # 分析变更
     analysis = analyze_changes(files)
-    
+
     # 确定类型和范围
     commit_type = determine_commit_type(analysis)
     scope = determine_scope(analysis)
-    
+
     # 生成消息
     summary = generate_summary(analysis, commit_type, scope)
     description = generate_description(analysis)
-    
+
     # 组装完整消息
     message = f"{commit_type}({scope}): {summary}\n\n{description}"
-    
+
     return message
 
 def print_section(title: str, content: str = ""):
@@ -229,24 +228,24 @@ def main():
     """主函数"""
     print("\n📝 Git 提交消息生成器")
     print("="*60)
-    
+
     # 检查是否在 Git 仓库中
     _, rc = run_command("git rev-parse --git-dir")
     if rc != 0:
         print("❌ 当前目录不是 Git 仓库")
         sys.exit(1)
-    
+
     # 生成提交消息
     message = generate_commit_message()
-    
+
     # 显示生成的消息
     print_section("✅ 生成的提交消息")
     print(message)
-    
+
     # 显示详细信息
     files = get_staged_files()
     print_section("📋 已暂存的文件", '\n'.join(f"  • {f}" for f in files))
-    
+
     # 提示
     print_section("💡 提示")
     print("  使用以下命令提交:")
