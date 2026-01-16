@@ -67,17 +67,19 @@ def verify_token(token: str) -> Optional[TokenData]:
         
         # 提取用户信息
         username: str = payload.get("sub")
-        user_id: int = payload.get("user_id")
         
-        if username is None or user_id is None:
+        if username is None:
             return None
+        
+        # user_id 是可选的，支持只包含 username 的令牌
+        user_id: int = payload.get("user_id")
         
         token_data = TokenData(
             username=username,
             user_id=user_id
         )
         return token_data
-    
+        
     except JWTError:
         return None
 
