@@ -152,17 +152,47 @@
   - 支持文件和文本索引
   - 完整的错误处理和返回格式
 
+**任务 4.5：向量存储集成测试** ✅ 完成
+- 完成方式：快速型（AI直接提供完整代码）
+- 创建的文件：
+  - backend/tests/conftest.py（pytest环境配置）
+  - backend/tests/integration/test_vector_integration.py（集成测试）
+- Git 提交：ceefbf1 - fix: 修复Chroma弃用警告和Windows文件锁定问题
+- 测试状态：✅ 6个集成测试全部通过
+- 学习要点：
+  - pytest 环境变量配置（.env 文件加载）
+  - 真实 API 调用的集成测试策略
+  - 集成测试与单元测试的区别和适用场景
+- 技术要点：
+  - 测试真实 ZhipuAIEmbeddings embedding 生成
+  - 测试文档添加和语义检索准确性
+  - 测试 retriever 转换功能
+  - Windows 文件锁定问题的处理方案
+- 解决的问题：
+  - Chroma 弃用警告：从 langchain_community 改为 langchain_chroma
+  - Windows 文件锁定：添加文件释放等待和错误处理
+  - 环境变量加载：创建 conftest.py 统一加载 .env 文件
+
 ### 遇到的问题和解决方案
 
 #### 测试相关
 - pytest 环境配置问题，导致测试无法运行
 - 解决方案：创建测试文件，后续统一配置 pytest 环境后批量运行
+- Chroma 弃用警告（LangChain 0.2.9+）
+  - 问题描述：Chroma 从 langchain_community 迁移到 langchain_chroma
+  - 解决方案：修改导入语句从 `langchain_community.vectorstores` 到 `langchain_chroma`
+- Windows 文件锁定问题（集成测试清理失败）
+  - 问题描述：ChromaDB 文件句柄未释放导致临时目录删除失败
+  - 解决方案：添加文件释放等待时间、只读文件处理、异常捕获确保测试通过
+- 环境变量未加载导致集成测试跳过
+  - 问题描述：pytest 无法读取 .env 文件中的 ZHIPUAI_API_KEY
+  - 解决方案：创建 conftest.py 使用 dotenv 自动加载 .env 文件
 
 ### 技术决策变更记录
 
 #### [待更新]
 
-**最后更新**: 2026-01-16 20:10
-**当前任务**: 阶段5准备中 - RAG语义检索（阶段4完成，47个单元测试全部通过）
+**最后更新**: 2026-01-16 20:30
+**当前任务**: 阶段5开始 - RAG语义检索（阶段4完成，47个单元测试+6个集成测试全部通过）
 **下一步**: 任务5.1 - 创建检索链（使用 LangChain RetrievalChain）
 **文档分离**: 任务进度、进度可视化、笔记区域已分离到独立文档
