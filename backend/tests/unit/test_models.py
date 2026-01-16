@@ -138,4 +138,5 @@ def test_user_response():
     )
     assert user_response.id == 1
     assert user_response.username == "testuser"
-    assert user_response.hashed_password is None  # 响应模型不包含密码
+    # hashed_password 不应该出现在响应模型中 (Pydantic v2 会直接忽略 exclude 的字段)
+    assert not hasattr(user_response, "hashed_password")

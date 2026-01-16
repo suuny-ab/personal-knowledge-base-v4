@@ -5,6 +5,7 @@
 import pytest
 import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete
 from backend.app.database.user_db import (
     User, hash_password, verify_password,
     get_user_by_username, get_user_by_email, create_user,
@@ -17,9 +18,23 @@ async def db_session():
     """创建测试数据库会话"""
     # 初始化测试数据库
     await init_db()
-    
-    async with get_session() as session:
+
+    # get_session 是 async generator,需要用 anext()
+    session_gen = get_session()
+    session = await anext(session_gen)
+    try:
         yield session
+    finally:
+        # 清理所有测试数据 - 只在会话仍然有效时执行
+        try:
+            if session.is_active:
+                await session.execute(delete(User).where(User.username.like("test%")))
+                await session.commit()
+        except Exception:
+            # 如果会话已经关闭，忽略错误
+            pass
+        finally:
+            await session.close()
 
 
 @pytest.mark.asyncio
@@ -91,20 +106,21 @@ async def test_create_user_duplicate_username(db_session: AsyncSession):
 @pytest.mark.asyncio
 async def test_get_user_by_username(db_session: AsyncSession):
     """测试根据用户名获取用户"""
-    # 先创建用户
+    # 先创建用户，使用唯一的用户名
+    username = "testuser_unique"
     created_user = await create_user(
         session=db_session,
-        username="testuser",
+        username=username,
         email="test@example.com",
         hashed_password=hash_password("Password123")
     )
     
     # 查询用户
-    found_user = await get_user_by_username(db_session, "testuser")
+    found_user = await get_user_by_username(db_session, username)
     
     assert found_user is not None
     assert found_user.id == created_user.id
-    assert found_user.username == "testuser"
+    assert found_user.username == username
 
 
 @pytest.mark.asyncio
