@@ -8,7 +8,7 @@ import os
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from langchain_community.embeddings import ZhipuAIEmbeddings
 
 from backend.app.llm.factory import EmbeddingProvider, LLMFactory

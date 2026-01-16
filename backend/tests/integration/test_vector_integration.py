@@ -75,6 +75,8 @@ class TestRealVectorStorage:
     def temp_vector_db(self, tmp_path):
         """创建临时向量数据库"""
         import shutil
+        import stat
+        import time
         
         # 临时目录
         temp_dir = tmp_path / "temp_chroma_db"
@@ -85,9 +87,21 @@ class TestRealVectorStorage:
         
         yield db
         
-        # 清理
+        # 清理（处理 Windows 文件锁定）
+        def handle_remove_readonly(func, path, exc):
+            """处理 Windows 只读文件"""
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
+        
         if temp_dir.exists():
-            shutil.rmtree(temp_dir)
+            # Windows 上先等待一下让文件句柄释放
+            if os.name == 'nt':
+                time.sleep(0.1)
+            try:
+                shutil.rmtree(temp_dir, onerror=handle_remove_readonly)
+            except Exception:
+                # 如果还是失败，就忽略，测试已经通过了
+                pass
     
     @pytest.mark.skipif(
         not os.getenv("ZHIPUAI_API_KEY"),
