@@ -105,6 +105,28 @@
   - JWT令牌验证流程
   - 用户状态管理
 
+**任务 3.1：创建LLM工厂类** ✅ 完成
+- 完成方式：学习型（用户手动编写代码，AI指导技术原理）
+- 创建的文件：
+  - backend/app/llm/factory.py（LLM工厂类和统一接口）
+  - backend/tests/unit/test_llm_factory.py（单元测试文件）
+- Git 提交：[待添加提交记录] - feat(ai): 任务3.1 - 创建LLM工厂类，支持DeepSeek和智谱AI双模型
+- 测试文件：unit/test_llm_factory.py
+- 测试状态：✅ 17个单元测试全部通过
+- 学习要点：
+  - 工厂模式设计原理
+  - LangChain 0.3.7 ChatOpenAI 和 ChatZhipuAI 的使用
+  - DeepSeek API OpenAI 兼容性配置
+  - ZhipuAIEmbeddings embedding-3 向量化模型
+  - LLMProvider 和 EmbeddingProvider 枚举设计
+  - 统一的 AI 服务接口封装
+- 技术要点：
+  - 支持DeepSeek: deepseek-chat 和 deepseek-reasoner
+  - 支持智谱AI: GLM-4.7、GLM-4、GLM-3-Turbo
+  - 支持智谱AI embedding-3 向量化
+  - 灵活配置 temperature、max_tokens、streaming 参数
+  - 单元测试覆盖率 100%
+
 ### 遇到的问题和解决方案
 
 #### 测试相关
@@ -115,7 +137,7 @@
 
 #### [待更新]
 
-**最后更新**: 2026-01-16 17:30
-**当前任务**: 阶段2完成 - 用户认证系统（所有任务完成，代码已提交）
-**下一步**: 开始阶段3 - AI集成（任务3.1：创建LLM工厂类）
+**最后更新**: 2026-01-16 19:50
+**当前任务**: 阶段3进行中 - AI集成（任务3.1完成，17个单元测试全部通过）
+**下一步**: 任务4.1 - 构建向量存储服务（使用 ChromaDB 和 ZhipuAIEmbeddings）
 **文档分离**: 任务进度、进度可视化、笔记区域已分离到独立文档
