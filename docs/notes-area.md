@@ -173,6 +173,31 @@
   - Windows 文件锁定：添加文件释放等待和错误处理
   - 环境变量加载：创建 conftest.py 统一加载 .env 文件
 
+**任务 5.1：创建检索链** ✅ 完成
+- 完成方式：快速型（AI直接提供完整代码）
+- 创建的文件：
+  - backend/app/chains/retrieval.py（RAG检索链实现）
+  - backend/tests/unit/test_retrieval_chain.py（单元测试）
+- Git 提交：4d645d3 - feat(rag): 任务5.1 - 创建RAG检索链
+- 测试状态：✅ 12个单元测试全部通过
+- 学习要点：
+  - LangChain LCEL (LangChain Expression Language) 的使用
+  - 从 RetrievalQA 迁移到 LCEL 架构
+  - ChatPromptTemplate 的配置和使用
+  - 延迟构建链的设计模式
+  - RunnablePassthrough 和 StrOutputParser 的使用
+- 技术要点：
+  - 使用 LCEL 构建检索链 (retriever | format_docs)
+  - 支持同步和异步查询
+  - 中文提示词模板设计
+  - 可配置的 Top-K 和相似度阈值
+  - 检索器动态更新机制
+- 解决的问题：
+  - LangChain 0.3+ 中 RetrievalQA 已被弃用
+  - Mock 对象不支持 LCEL 的 `|` 操作符
+  - 使用延迟构建链解决测试中的 Mock 兼容性问题
+  - 异步测试中的 AsyncMock 正确配置
+
 ### 遇到的问题和解决方案
 
 #### 测试相关
@@ -192,7 +217,7 @@
 
 #### [待更新]
 
-**最后更新**: 2026-01-16 20:30
-**当前任务**: 阶段5开始 - RAG语义检索（阶段4完成，47个单元测试+6个集成测试全部通过）
-**下一步**: 任务5.1 - 创建检索链（使用 LangChain RetrievalChain）
+**最后更新**: 2026-01-16 21:00
+**当前任务**: 阶段5进行中 - RAG语义检索（任务5.1完成，12个单元测试全部通过）
+**下一步**: 任务5.2 - 设计 RAG PromptTemplate（已在任务5.1中实现，可跳过或优化）
 **文档分离**: 任务进度、进度可视化、笔记区域已分离到独立文档
