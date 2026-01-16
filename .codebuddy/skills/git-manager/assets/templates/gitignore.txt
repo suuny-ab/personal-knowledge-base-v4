@@ -41,7 +41,5 @@ build/
 *.sqlite
 *.sqlite3
 
-# CodeBuddy（忽略缓存和临时文件，但保留 skills）
-.codebuddy/cache/
-.codebuddy/tmp/
-.codebuddy/*.json
+# CodeBuddy
+.codebuddy/

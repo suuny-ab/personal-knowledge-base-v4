@@ -6,12 +6,12 @@
 ## 开发规范
 
 ### Git 工作流程（半自动化）
-本项目采用 AI 辅助的 Git 半自动化管理：
+本项目采用 AI 辅助的 Git 半自动化管理，已配置 **git-manager** Skill：
 
 1. **初始化阶段**
-   - 设置 Git 仓库
-   - 创建 .gitignore 文件
-   - 配置基本提交模板
+   - ✅ 设置 Git 仓库
+   - ✅ 创建 .gitignore 文件
+   - ✅ 配置基础提交模板
 
 2. **日常开发流程**
    - 完成功能开发后，我会检查代码变更
@@ -32,6 +32,13 @@
 ## 项目结构（待完善）
 ```
 personal-knowledge-base-v4/
+├── .codebuddy/
+│   └── skills/
+│       └── git-manager/      # Git 管理技能
+│           ├── SKILL.md
+│           ├── scripts/      # Git 管理脚本
+│           ├── references/   # Git 参考文档
+│           └── assets/       # Git 模板文件
 ├── docs/           # 项目文档
 ├── src/            # 源代码
 ├── tests/          # 测试代码
@@ -46,6 +53,8 @@ personal-knowledge-base-v4/
 - 其他工具：
 
 ## 开发计划
+- [x] 初始化 Git 仓库
+- [x] 创建 git-manager Skill
 - [ ] 确定项目技术栈
 - [ ] 设计项目架构
 - [ ] 实现核心功能
