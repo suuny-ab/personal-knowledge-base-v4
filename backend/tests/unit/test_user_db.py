@@ -20,8 +20,6 @@ async def db_session():
     
     async with get_session() as session:
         yield session
-    
-    # 清理：测试后删除测试数据（可选）
 
 
 @pytest.mark.asyncio
