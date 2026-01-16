@@ -2,11 +2,22 @@
 FastAPI 主应用
 个人知识库智能管理系统后端 API
 """
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.routes import auth, protected
 from backend.app.database.user_db import init_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理"""
+    # 启动时初始化数据库
+    await init_db()
+    yield
+    # 关闭时清理资源（如果需要）
+
 
 # 创建 FastAPI 应用实例
 app = FastAPI(
@@ -14,7 +25,8 @@ app = FastAPI(
     description="个人知识库智能管理系统后端 API",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # 配置 CORS 中间件
@@ -29,12 +41,6 @@ app.add_middleware(
 # 注册路由
 app.include_router(auth.router)
 app.include_router(protected.router)
-
-
-@app.on_event("startup")
-async def startup_event():
-    """应用启动时初始化数据库"""
-    await init_db()
 
 
 @app.get("/")

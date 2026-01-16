@@ -25,9 +25,10 @@ async def get_user_profile(current_user: User = Depends(get_current_active_user)
         id=current_user.id,
         username=current_user.username,
         email=current_user.email,
-        is_active=current_user.is_active,
+        github_token=getattr(current_user, 'github_token', None),
+        github_repo=getattr(current_user, 'github_repo', None),
         created_at=current_user.created_at,
-        updated_at=current_user.updated_at
+        is_active=current_user.is_active
     )
 
 

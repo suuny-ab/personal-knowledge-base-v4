@@ -2,7 +2,7 @@
 用户数据模型
 使用 Pydantic v2 定义用户相关的数据模型
 """
-from pydantic import BaseModel, Field, EmailStr, field_validator
+from pydantic import BaseModel, Field, EmailStr, field_validator, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -60,8 +60,7 @@ class UserInDB(UserBase):
     updated_at: datetime
     is_active: bool = True
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class User(UserBase):
@@ -70,8 +69,7 @@ class User(UserBase):
     created_at: datetime
     is_active: bool = True
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserLogin(BaseModel):
@@ -84,6 +82,7 @@ class Token(BaseModel):
     """Token 响应模型"""
     access_token: str = Field(..., description="访问令牌")
     token_type: str = Field(default="bearer", description="令牌类型")
+    expires_in: int = Field(..., description="令牌过期时间（秒）")
 
 
 class TokenData(BaseModel):

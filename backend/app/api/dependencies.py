@@ -6,9 +6,10 @@ from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.security import verify_token
-from backend.app.database.user_db import get_user_by_username
+from backend.app.database.user_db import get_user_by_username, get_session
 from backend.app.models.user import User
 
 # HTTP Bearer 认证方案
@@ -16,13 +17,15 @@ security = HTTPBearer()
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    session: AsyncSession = Depends(get_session)
 ) -> User:
     """
     获取当前认证用户
     
     Args:
         credentials: HTTP Bearer 令牌
+        session: 数据库会话
         
     Returns:
         User: 当前用户对象
@@ -38,11 +41,11 @@ async def get_current_user(
     
     try:
         # 验证 JWT 令牌
-        payload = verify_token(credentials.credentials)
-        if payload is None:
+        token_data = verify_token(credentials.credentials)
+        if token_data is None:
             raise credentials_exception
             
-        username: str = payload.get("sub")
+        username: str = token_data.username
         if username is None:
             raise credentials_exception
             
@@ -50,7 +53,7 @@ async def get_current_user(
         raise credentials_exception
     
     # 从数据库获取用户信息
-    user = await get_user_by_username(username)
+    user = await get_user_by_username(session, username)
     if user is None:
         raise credentials_exception
         
@@ -81,7 +84,8 @@ async def get_current_active_user(
 
 
 async def optional_auth(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    session: AsyncSession = Depends(get_session)
 ) -> Optional[User]:
     """
     可选的认证依赖
@@ -89,6 +93,7 @@ async def optional_auth(
     
     Args:
         credentials: 可选的 HTTP Bearer 令牌
+        session: 数据库会话
         
     Returns:
         Optional[User]: 用户对象或 None
@@ -97,15 +102,15 @@ async def optional_auth(
         return None
         
     try:
-        payload = verify_token(credentials.credentials)
-        if payload is None:
+        token_data = verify_token(credentials.credentials)
+        if token_data is None:
             return None
             
-        username: str = payload.get("sub")
+        username: str = token_data.username
         if username is None:
             return None
             
-        user = await get_user_by_username(username)
+        user = await get_user_by_username(session, username)
         return user
         
     except JWTError:

@@ -3,12 +3,19 @@
 测试认证中间件和API端点的功能
 """
 import pytest
+import time
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
 
-# 创建同步测试客户端
+# 创建同步测试客户端（兼容FastAPI 0.128.0）
 client = TestClient(app=app)
+
+# 生成唯一的测试用户名
+def get_unique_username(base_name):
+    """生成唯一的用户名，避免测试冲突"""
+    timestamp = int(time.time() * 1000)
+    return f"{base_name}_{timestamp}"
 
 
 def test_root_endpoint():
@@ -28,9 +35,10 @@ def test_health_check():
 
 def test_register_user():
     """测试用户注册"""
+    unique_name = get_unique_username("testuser")
     user_data = {
-        "username": "testuser",
-        "email": "test@example.com",
+        "username": unique_name,
+        "email": f"{unique_name}@example.com",
         "password": "Password123"
     }
     
@@ -38,16 +46,17 @@ def test_register_user():
     
     assert response.status_code == 201
     data = response.json()
-    assert data["username"] == "testuser"
-    assert data["email"] == "test@example.com"
+    assert data["username"] == unique_name
+    assert data["email"] == f"{unique_name}@example.com"
     assert "id" in data
 
 
 def test_register_duplicate_username():
     """测试重复用户名注册"""
+    unique_name = get_unique_username("testuser2")
     user_data = {
-        "username": "testuser2",
-        "email": "test2@example.com",
+        "username": unique_name,
+        "email": f"{unique_name}@example.com",
         "password": "Password123"
     }
     
@@ -63,17 +72,18 @@ def test_register_duplicate_username():
 
 def test_login_success():
     """测试成功登录"""
+    unique_name = get_unique_username("testuser3")
     # 先注册用户
     user_data = {
-        "username": "testuser3",
-        "email": "test3@example.com",
+        "username": unique_name,
+        "email": f"{unique_name}@example.com",
         "password": "Password123"
     }
     client.post("/auth/register", json=user_data)
     
     # 登录
     login_data = {
-        "username": "testuser3",
+        "username": unique_name,
         "password": "Password123"
     }
     response = client.post("/auth/login", data=login_data)
@@ -87,17 +97,18 @@ def test_login_success():
 
 def test_login_wrong_password():
     """测试密码错误登录"""
+    unique_name = get_unique_username("testuser4")
     # 先注册用户
     user_data = {
-        "username": "testuser4",
-        "email": "test4@example.com",
+        "username": unique_name,
+        "email": f"{unique_name}@example.com",
         "password": "Password123"
     }
     client.post("/auth/register", json=user_data)
     
     # 使用错误密码登录
     login_data = {
-        "username": "testuser4",
+        "username": unique_name,
         "password": "WrongPassword"
     }
     response = client.post("/auth/login", data=login_data)
@@ -110,23 +121,24 @@ def test_protected_endpoint_without_token():
     """测试未认证访问受保护端点"""
     response = client.get("/protected/profile")
     
-    # FastAPI 默认返回 403 而不是 401
-    assert response.status_code == 403
+    # FastAPI 默认返回 401 而不是 403
+    assert response.status_code == 401
     assert "Not authenticated" in response.json()["detail"]
 
 
 def test_protected_endpoint_with_valid_token():
     """测试带有效令牌访问受保护端点"""
+    unique_name = get_unique_username("testuser5")
     # 注册并登录获取令牌
     user_data = {
-        "username": "testuser5",
-        "email": "test5@example.com",
+        "username": unique_name,
+        "email": f"{unique_name}@example.com",
         "password": "Password123"
     }
     client.post("/auth/register", json=user_data)
     
     login_data = {
-        "username": "testuser5",
+        "username": unique_name,
         "password": "Password123"
     }
     login_response = client.post("/auth/login", data=login_data)
@@ -138,7 +150,7 @@ def test_protected_endpoint_with_valid_token():
     
     assert response.status_code == 200
     data = response.json()
-    assert data["username"] == "testuser5"
+    assert data["username"] == unique_name
 
 
 def test_invalid_token():
