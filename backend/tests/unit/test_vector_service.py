@@ -241,7 +241,7 @@ class TestSearch:
             user_id=1,
             query="测试",
             n_results=5,
-            where={"source": "filtered"}
+            filter_metadata={"source": "filtered"}
         )
     
     @patch("backend.app.services.vector_service.get_vector_db")

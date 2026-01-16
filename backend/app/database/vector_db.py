@@ -1,18 +1,17 @@
 """
 ChromaDB 向量数据库配置
 
-实现用户隔离的向量存储系统，支持文档向量化和检索。
+使用 LangChain 官方 Chroma 类实现，提供用户隔离的向量存储系统。
 """
 
 import os
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 
-from chromadb.config import Settings
-from chromadb import Client as ChromaClient
-from chromadb.utils import embedding_functions
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import ZhipuAIEmbeddings
 
-from backend.app.llm.factory import LLMFactory, EmbeddingProvider
+from backend.app.llm.factory import EmbeddingProvider, LLMFactory
 
 
 class VectorDatabase:
@@ -37,61 +36,50 @@ class VectorDatabase:
         self.persist_directory = Path(persist_directory)
         self.persist_directory.mkdir(parents=True, exist_ok=True)
         
-        # 初始化 ChromaDB 客户端
-        self.client = ChromaClient(
-            settings=Settings(
-                chroma_db_impl="duckdb+parquet",
-                persist_directory=str(self.persist_directory)
-            )
-        )
-        
-        # 获取 embedding 函数
+        # 使用 LangChain 的 ZhipuAIEmbeddings
         self.embeddings = LLMFactory.create_embeddings(provider=embedding_provider)
         
-        # 缓存用户集合
-        self._user_collections: Dict[int, Any] = {}
+        # 缓存用户向量存储
+        self._user_vectorstores: Dict[int, Chroma] = {}
     
-    def get_user_collection(self, user_id: int) -> Any:
+    def get_user_vectorstore(self, user_id: int) -> Chroma:
         """
-        获取或创建用户的向量集合
+        获取或创建用户的向量存储
         
         Args:
             user_id: 用户ID
             
         Returns:
-            Chroma Collection 对象
+            LangChain Chroma VectorStore 对象
         """
-        if user_id in self._user_collections:
-            return self._user_collections[user_id]
+        if user_id in self._user_vectorstores:
+            return self._user_vectorstores[user_id]
         
         collection_name = f"user_{user_id}"
         
-        # 尝试获取已存在的集合
-        try:
-            collection = self.client.get_collection(name=collection_name)
-        except Exception:
-            # 集合不存在，创建新集合
-            collection = self.client.create_collection(
-                name=collection_name,
-                metadata={"user_id": user_id}
-            )
+        # 创建或加载用户的 Chroma 向量存储
+        vectorstore = Chroma(
+            collection_name=collection_name,
+            embedding_function=self.embeddings,
+            persist_directory=str(self.persist_directory)
+        )
         
-        self._user_collections[user_id] = collection
-        return collection
+        self._user_vectorstores[user_id] = vectorstore
+        return vectorstore
     
     def add_documents(
         self,
         user_id: int,
-        documents: List[str],
+        texts: List[str],
         metadatas: Optional[List[Dict[str, Any]]] = None,
         ids: Optional[List[str]] = None
     ) -> bool:
         """
-        添加文档到向量集合
+        添加文档到向量存储
         
         Args:
             user_id: 用户ID
-            documents: 文档文本列表
+            texts: 文档文本列表
             metadatas: 文档元数据列表
             ids: 文档ID列表
             
@@ -99,15 +87,15 @@ class VectorDatabase:
             是否添加成功
         """
         try:
-            collection = self.get_user_collection(user_id)
+            vectorstore = self.get_user_vectorstore(user_id)
             
             # 如果没有提供 ids，自动生成
             if ids is None:
-                ids = [f"doc_{user_id}_{i}" for i in range(len(documents))]
+                ids = [f"doc_{user_id}_{i}" for i in range(len(texts))]
             
-            # 添加文档到集合（ChromaDB 会自动使用 embeddings 向量化）
-            collection.add(
-                documents=documents,
+            # 使用 LangChain 的 add_texts 方法（会自动向量化）
+            vectorstore.add_texts(
+                texts=texts,
                 metadatas=metadatas,
                 ids=ids
             )
@@ -122,33 +110,81 @@ class VectorDatabase:
         user_id: int,
         query: str,
         n_results: int = 5,
-        where: Optional[Dict[str, Any]] = None
+        filter_metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        在用户集合中进行向量检索
+        在向量存储中进行相似度检索
         
         Args:
             user_id: 用户ID
             query: 查询文本
             n_results: 返回结果数量
-            where: 元数据过滤条件
+            filter_metadata: 元数据过滤条件
             
         Returns:
             检索结果字典
         """
         try:
-            collection = self.get_user_collection(user_id)
+            vectorstore = self.get_user_vectorstore(user_id)
             
-            results = collection.query(
-                query_texts=[query],
-                n_results=n_results,
-                where=where
+            # 使用 similarity_search_with_relevance_scores 方法
+            # 获取文档和相似度分数
+            filter_dict = filter_metadata if filter_metadata else None
+            
+            results = vectorstore.similarity_search_with_relevance_scores(
+                query=query,
+                k=n_results,
+                filter=filter_dict
             )
             
-            return results
+            # 格式化结果
+            documents = []
+            metadatas = []
+            distances = []
+            doc_ids = []
+            
+            for doc, score in results:
+                documents.append(doc.page_content)
+                metadatas.append(doc.metadata)
+                distances.append(1 - score)  # 将相似度转换为距离
+                doc_ids.append(doc.metadata.get("chunk_id", ""))
+            
+            return {
+                "documents": [documents],
+                "metadatas": [metadatas],
+                "distances": [distances],
+                "ids": [doc_ids]
+            }
         except Exception as e:
             print(f"Error searching documents: {e}")
-            return {"documents": [], "metadatas": [], "distances": [], "ids": []}
+            return {"documents": [[]], "metadatas": [[]], "distances": [[]], "ids": [[]]}
+    
+    def as_retriever(
+        self,
+        user_id: int,
+        search_type: str = "similarity",
+        search_kwargs: Optional[Dict[str, Any]] = None
+    ):
+        """
+        将向量存储转换为 LangChain Retriever
+        
+        Args:
+            user_id: 用户ID
+            search_type: 检索类型（similarity, mmr, similarity_score_threshold）
+            search_kwargs: 检索参数（如 k, score_threshold）
+            
+        Returns:
+            LangChain Retriever 对象
+        """
+        vectorstore = self.get_user_vectorstore(user_id)
+        
+        if search_kwargs is None:
+            search_kwargs = {"k": 5}
+        
+        return vectorstore.as_retriever(
+            search_type=search_type,
+            search_kwargs=search_kwargs
+        )
     
     def delete_documents(
         self,
@@ -156,7 +192,7 @@ class VectorDatabase:
         ids: List[str]
     ) -> bool:
         """
-        从用户集合中删除文档
+        从向量存储中删除文档
         
         Args:
             user_id: 用户ID
@@ -166,8 +202,8 @@ class VectorDatabase:
             是否删除成功
         """
         try:
-            collection = self.get_user_collection(user_id)
-            collection.delete(ids=ids)
+            vectorstore = self.get_user_vectorstore(user_id)
+            vectorstore.delete(ids=ids)
             return True
         except Exception as e:
             print(f"Error deleting documents: {e}")
@@ -177,28 +213,29 @@ class VectorDatabase:
         self,
         user_id: int,
         ids: List[str],
-        documents: Optional[List[str]] = None,
+        texts: Optional[List[str]] = None,
         metadatas: Optional[List[Dict[str, Any]]] = None
     ) -> bool:
         """
-        更新用户集合中的文档
+        更新向量存储中的文档
         
         Args:
             user_id: 用户ID
             ids: 要更新的文档ID列表
-            documents: 新的文档文本列表
+            texts: 新的文档文本列表
             metadatas: 新的元数据列表
             
         Returns:
             是否更新成功
         """
         try:
-            collection = self.get_user_collection(user_id)
-            collection.update(
-                ids=ids,
-                documents=documents,
-                metadatas=metadatas
-            )
+            # Chroma 不支持直接更新，需要先删除再添加
+            # 这里实现为删除旧文档，添加新文档
+            self.delete_documents(user_id, ids)
+            
+            if texts:
+                self.add_documents(user_id, texts, metadatas, ids)
+            
             return True
         except Exception as e:
             print(f"Error updating documents: {e}")
@@ -206,7 +243,7 @@ class VectorDatabase:
     
     def get_collection_stats(self, user_id: int) -> Dict[str, int]:
         """
-        获取用户集合的统计信息
+        获取用户向量存储的统计信息
         
         Args:
             user_id: 用户ID
@@ -215,10 +252,15 @@ class VectorDatabase:
             统计信息字典
         """
         try:
-            collection = self.get_user_collection(user_id)
+            vectorstore = self.get_user_vectorstore(user_id)
+            # 通过检索获取文档数量
+            # 注意：Chroma 没有直接的 count 方法，需要通过其他方式获取
+            collection = vectorstore._collection
+            count = collection.count()
+            
             return {
                 "user_id": user_id,
-                "count": collection.count()
+                "count": count
             }
         except Exception as e:
             print(f"Error getting collection stats: {e}")
@@ -226,7 +268,7 @@ class VectorDatabase:
     
     def delete_user_collection(self, user_id: int) -> bool:
         """
-        删除用户的向量集合
+        删除用户的向量存储
         
         Args:
             user_id: 用户ID
@@ -236,30 +278,19 @@ class VectorDatabase:
         """
         try:
             collection_name = f"user_{user_id}"
-            self.client.delete_collection(name=collection_name)
+            
+            # 删除集合
+            vectorstore = self.get_user_vectorstore(user_id)
+            vectorstore.delete_collection()
             
             # 清除缓存
-            if user_id in self._user_collections:
-                del self._user_collections[user_id]
+            if user_id in self._user_vectorstores:
+                del self._user_vectorstores[user_id]
             
             return True
         except Exception as e:
             print(f"Error deleting collection: {e}")
             return False
-    
-    def list_user_collections(self) -> List[str]:
-        """
-        列出所有用户集合名称
-        
-        Returns:
-            用户集合名称列表
-        """
-        try:
-            collections = self.client.list_collections()
-            return [collection.name for collection in collections]
-        except Exception as e:
-            print(f"Error listing collections: {e}")
-            return []
 
 
 # 全局向量数据库实例（单例模式）

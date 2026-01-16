@@ -70,7 +70,7 @@ class VectorService:
         # 添加到向量数据库
         success = self.vector_db.add_documents(
             user_id=user_id,
-            documents=documents,
+            texts=documents,  # 修改为 texts（LangChain API 要求）
             metadatas=metadatas,
             ids=ids
         )
@@ -159,7 +159,7 @@ class VectorService:
                 user_id=user_id,
                 query=query,
                 n_results=n_results,
-                where=filter_metadata
+                filter_metadata=filter_metadata  # 修改为 filter_metadata
             )
             
             # 格式化结果
